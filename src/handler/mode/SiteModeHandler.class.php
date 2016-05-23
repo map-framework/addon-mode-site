@@ -244,7 +244,7 @@ class SiteModeHandler extends AbstractModeHandler {
 	}
 
 	protected function isStatusRestored():bool {
-		return !count($_POST) && !$this->isFormClose();
+		return !count($_POST) && count($this->getForm()) && !$this->isFormClose();
 	}
 
 	protected function isStatusRepeated():bool {
