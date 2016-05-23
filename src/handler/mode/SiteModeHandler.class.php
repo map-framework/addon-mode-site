@@ -15,7 +15,6 @@ use extension\AbstractSitePage;
 use util\Bucket;
 use util\Logger;
 use util\MAPException;
-use xml\Tree;
 use xml\XSLProcessor;
 
 /**
@@ -110,13 +109,13 @@ class SiteModeHandler extends AbstractModeHandler {
 		}
 
 		if (isset($formStatus)) {
-			$page->setFormData('formId', self::generateFormId());
 			$page->view();
 		}
 		else {
 			if ($this->fillPageObject($page, $_POST)) {
 				if ($page->check()) {
 					$formStatus = new FormStatusEnum(FormStatusEnum::ACCEPTED);
+					$this->closeForm($page->formId);
 				}
 			}
 			else {
@@ -128,18 +127,36 @@ class SiteModeHandler extends AbstractModeHandler {
 			}
 		}
 
-		$this->handleResponse($page->getResponse(), $formStatus, $stylesheet);
+		$this->handleResponse($page, $formStatus, $stylesheet);
 	}
 
 	/**
 	 * @throws MAPException
 	 * @throws UnexpectedTypeException
 	 */
-	public function handleResponse(Tree $response, FormStatusEnum $formStatus, File $stylesheet) {
-		$response->getRootNode()->getChildList('form')[0]->setAttribute(
-				'status',
-				$formStatus->get()
-		);
+	public function handleResponse(AbstractSitePage $page, FormStatusEnum $formStatus, File $stylesheet) {
+		if (in_array($formStatus->get(), [FormStatusEnum::INIT, FormStatusEnum::REPEATED, FormStatusEnum::ACCEPTED])) {
+			$page->setFormData('formId', self::generateFormId());
+		}
+		elseif ($formStatus->get() === FormStatusEnum::REJECTED) {
+			foreach ((new ClassObject(get_class($page)))->getPropertyList() as $property) {
+				if ($property->hasAnnotation('formData')) {
+					$property->assertIsNotPrivate();
+
+					$page->setFormData($property->getName(), $property->getValue($page));
+					$formData[$property->getName()] = $property->getValue($page);
+				}
+			}
+			$this->setForm($formData ?? array());
+		}
+
+		$response = $page->getResponse();
+		if ($formStatus->get()) {
+			$response->getRootNode()->getChildList('form')[0]->setAttribute(
+					'status',
+					$formStatus->get()
+			);
+		}
 
 		echo (new XSLProcessor())
 				->setStylesheetFile($stylesheet)
@@ -163,6 +180,7 @@ class SiteModeHandler extends AbstractModeHandler {
 		foreach ((new ClassObject(AbstractSitePage::class))->getPropertyList() as $property) {
 			foreach ($property->getAnnotationList() as $annotation) {
 				if ($annotation->isName('formData')) {
+					$property->assertIsNotPrivate();
 					$annotation->assertIsBool('optional');
 
 					if ($annotation->hasParam('pattern')) {
@@ -173,7 +191,7 @@ class SiteModeHandler extends AbstractModeHandler {
 					$value = $dataList[$property->getName()] ?? null;
 
 					if (is_string($value) && AbstractData::isMatching($pattern ?? '^.+$', $value)) {
-						$property->setValue($page, $dataList);
+						$property->setValue($page, $value);
 					}
 					elseif ($annotation->getParam('optional') === false) {
 						Logger::debug(
