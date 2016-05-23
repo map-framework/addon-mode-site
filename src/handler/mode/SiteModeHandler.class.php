@@ -114,11 +114,16 @@ class SiteModeHandler extends AbstractModeHandler {
 			$page->view();
 		}
 		else {
-			if ($this->fillPageObject($page, $_POST) && $page->check()) {
-				$formStatus = new FormStatusEnum(FormStatusEnum::ACCEPTED);
-				$this->closeForm($page->formId);
+			if ($this->fillPageObject($page, $_POST)) {
+				if ($page->check()) {
+					$formStatus = new FormStatusEnum(FormStatusEnum::ACCEPTED);
+				}
 			}
 			else {
+				$page->reject('FORM_DATA');
+			}
+
+			if (!isset($formStatus)) {
 				$formStatus = new FormStatusEnum(FormStatusEnum::REJECTED);
 			}
 		}

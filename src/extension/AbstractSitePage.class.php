@@ -74,6 +74,28 @@ abstract class AbstractSitePage {
 		$this->responseForm = $this->response->getRootNode()->addChild(new Node('form'));
 	}
 
+	/**
+	 * Use this method in @see AbstractSitePage::check to reject the request.
+	 * Return the response of this method.
+	 */
+	final public function reject(string $reason = null):bool {
+		if ($reason !== null) {
+			$this->responseForm->setAttribute('reason', $reason);
+		}
+		return false;
+	}
+
+	/**
+	 * Use this method in @see AbstractSitePage::check to accept the request.
+	 * Return the response of this method.
+	 */
+	final public function accept(string $reason = null):bool {
+		if ($reason !== null) {
+			$this->responseForm->setAttribute('reason', $reason);
+		}
+		return true;
+	}
+
 	final public function setFormData(string $dataName, string $dataValue):AbstractSitePage {
 		$this->responseForm->addChild(
 				(new Node($dataName))->setContent($dataValue)
