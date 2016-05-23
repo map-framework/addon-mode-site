@@ -141,10 +141,12 @@ class SiteModeHandler extends AbstractModeHandler {
 		elseif ($formStatus->get() === FormStatusEnum::REJECTED) {
 			foreach ((new ClassObject(get_class($page)))->getPropertyList() as $property) {
 				if ($property->hasAnnotation('formData')) {
-					$property->assertIsNotPrivate();
+					$property->assertIsPublic();
 
-					$page->setFormData($property->getName(), $property->getValue($page));
-					$formData[$property->getName()] = $property->getValue($page);
+					if ($property->getValue($page) !== null) {
+						$page->setFormData($property->getName(), $property->getValue($page));
+						$formData[$property->getName()] = $property->getValue($page);
+					}
 				}
 			}
 			$this->setForm($formData ?? array());
@@ -177,34 +179,33 @@ class SiteModeHandler extends AbstractModeHandler {
 	 * @throws InvalidDataException
 	 */
 	protected function fillPageObject(AbstractSitePage $page, array $dataList):bool {
-		foreach ((new ClassObject(AbstractSitePage::class))->getPropertyList() as $property) {
-			foreach ($property->getAnnotationList() as $annotation) {
-				if ($annotation->isName('formData')) {
-					$property->assertIsNotPrivate();
-					$annotation->assertIsBool('optional');
+		foreach ((new ClassObject(get_class($page)))->getPropertyList() as $property) {
+			if ($property->hasAnnotation('formData')) {
+				$annotation = $property->getAnnotation('formData');
+				$annotation->assertIsBool('optional');
 
-					if ($annotation->hasParam('pattern')) {
-						$annotation->assertIsString('pattern');
+				if ($annotation->hasParam('pattern')) {
+					$annotation->assertIsString('pattern');
 
-						$pattern = $annotation->getParam('pattern');
-					}
-					$value = $dataList[$property->getName()] ?? null;
-
-					if (is_string($value) && AbstractData::isMatching($pattern ?? '^.+$', $value)) {
-						$property->setValue($page, $value);
-					}
-					elseif ($annotation->getParam('optional') === false) {
-						Logger::debug(
-								'REJECTED because: expected property',
-								array(
-										'page'           => $page,
-										'propertyObject' => $property,
-										'value'          => $value
-								)
-						);
-						return false;
-					}
+					$pattern = $annotation->getParam('pattern');
 				}
+				$value = $dataList[$property->getName()] ?? null;
+
+				if (is_string($value) && AbstractData::isMatching($pattern ?? '^.+$', $value)) {
+					$property->setValue($page, $value);
+				}
+				elseif ($annotation->getParam('optional') === false) {
+					Logger::debug(
+							'REJECTED because: expected property',
+							array(
+									'page'           => $page,
+									'propertyObject' => $property,
+									'value'          => $value
+							)
+					);
+					return false;
+				}
+
 			}
 		}
 		return true;
