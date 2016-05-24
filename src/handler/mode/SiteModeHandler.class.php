@@ -160,7 +160,27 @@ class SiteModeHandler extends AbstractModeHandler {
 				$formStatus->get()
 		);
 
-		# Session into response
+		# request into response
+		$requestNode = $response->getRootNode()->addChild(
+				(new Node('request'))
+						->withChild(
+								(new Node('mode'))->setContent($this->request->getMode()->get())
+						)
+						->withChild(
+								(new Node('area'))->setContent($this->request->getArea()->get())
+						)
+						->withChild(
+								(new Node('page'))->setContent($this->request->getPage())
+						)
+		);
+		$inputNode   = $requestNode->addChild(new Node('inputs'));
+		foreach ($this->request->getInputList() as $input) {
+			$inputNode->addChild(
+					(new Node('input'))->setContent($input)
+			);
+		}
+
+		# session into response
 		$group = $this->request->getMode()->getConfigGroup();
 		if (!$this->config->isNull($group, 'sessionIntoResponse')) {
 			$this->config->assertIsArray($group, 'sessionIntoResponse');
