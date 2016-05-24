@@ -15,6 +15,7 @@ use extension\AbstractSitePage;
 use util\Bucket;
 use util\Logger;
 use util\MAPException;
+use xml\Node;
 use xml\XSLProcessor;
 
 /**
@@ -160,13 +161,26 @@ class SiteModeHandler extends AbstractModeHandler {
 			);
 		}
 
+		# Session into response
+		$group = $this->request->getMode()->getConfigGroup();
+		if (!$this->config->isNull($group, 'sessionIntoResponse')) {
+			$this->config->assertIsArray($group, 'sessionIntoResponse');
+
+			$sessionNode = $response->getRootNode()->addChild(new Node('session'));
+			foreach ($this->config->get($group, 'sessionIntoResponse') as $sessionGroup) {
+				$sessionNode->addChild(
+						(new Node($sessionGroup))->fromArray($_SESSION[$sessionGroup] ?? array())
+				);
+			}
+		}
+
 		echo (new XSLProcessor())
 				->setStylesheetFile($stylesheet)
 				->setDocument($response->toDomDoc())
 				->transform();
 
 		# debug XML-File
-		if ($this->config->isTrue($this->request->getMode()->getConfigGroup(), 'debugResponseFile')) {
+		if ($this->config->isTrue($group, 'debugResponseFile')) {
 			(new File(sys_get_temp_dir()))
 					->attach(self::TEMP_SUB_DIR)
 					->makeDir()
