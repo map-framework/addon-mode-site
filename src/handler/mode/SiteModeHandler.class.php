@@ -166,7 +166,7 @@ class SiteModeHandler extends AbstractModeHandler {
 				->transform();
 
 		# debug XML-File
-		if ($this->request->getMode()->getSetting($this->config, 'debugResponseFile', false) === true) {
+		if ($this->config->isTrue($this->request->getMode()->getConfigGroup(), 'debugResponseFile')) {
 			(new File(sys_get_temp_dir()))
 					->attach(self::TEMP_SUB_DIR)
 					->makeDir()
