@@ -136,10 +136,7 @@ class SiteModeHandler extends AbstractModeHandler {
 	 * @throws UnexpectedTypeException
 	 */
 	public function handleResponse(AbstractSitePage $page, FormStatusEnum $formStatus, File $stylesheet) {
-		if (in_array($formStatus->get(), [FormStatusEnum::INIT, FormStatusEnum::REPEATED, FormStatusEnum::ACCEPTED])) {
-			$page->setFormData('formId', self::generateFormId());
-		}
-		elseif ($formStatus->get() === FormStatusEnum::REJECTED) {
+		if ($formStatus->get() === FormStatusEnum::REJECTED) {
 			foreach ((new ClassObject(get_class($page)))->getPropertyList() as $property) {
 				if ($property->hasAnnotation('formData')) {
 					$property->assertIsPublic();
@@ -153,13 +150,15 @@ class SiteModeHandler extends AbstractModeHandler {
 			$this->setForm($formData ?? array());
 		}
 
-		$response = $page->getResponse();
-		if ($formStatus->get()) {
-			$response->getRootNode()->getChildList('form')[0]->setAttribute(
-					'status',
-					$formStatus->get()
-			);
+		if ($page->getFormData('formId') === null) {
+			$page->setFormData('formId', self::generateFormId());
 		}
+
+		$response = $page->getResponse();
+		$response->getRootNode()->getChildList('form')[0]->setAttribute(
+				'status',
+				$formStatus->get()
+		);
 
 		# Session into response
 		$group = $this->request->getMode()->getConfigGroup();
@@ -200,12 +199,12 @@ class SiteModeHandler extends AbstractModeHandler {
 
 				if ($annotation->hasParam('pattern')) {
 					$annotation->assertIsString('pattern');
-
-					$pattern = $annotation->getParam('pattern');
 				}
-				$value = $dataList[$property->getName()] ?? null;
 
-				if (is_string($value) && AbstractData::isMatching($pattern ?? '^.+$', $value)) {
+				$value   = $dataList[$property->getName()] ?? null;
+				$pattern = $annotation->getParam('pattern', '^.+$');
+
+				if (is_string($value) && AbstractData::isMatching($pattern, $value)) {
 					$property->setValue($page, $value);
 				}
 				elseif ($annotation->getParam('optional') === false) {
@@ -219,7 +218,6 @@ class SiteModeHandler extends AbstractModeHandler {
 					);
 					return false;
 				}
-
 			}
 		}
 		return true;
@@ -248,7 +246,7 @@ class SiteModeHandler extends AbstractModeHandler {
 	protected function getForm(string $formId = null):array {
 		if ($this->forms->isArray($this->request->getArea(), $this->request->getPage())) {
 			$form = $this->forms->get($this->request->getArea(), $this->request->getPage());
-			if ($formId === null || (self::isFormId($formId) && $form['data']['formId'] === $formId)) {
+			if ($formId === null || (self::isFormId($formId) && ($form['data']['formId'] ?? null) === $formId)) {
 				return $form;
 			}
 		}

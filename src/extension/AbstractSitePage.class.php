@@ -96,11 +96,25 @@ abstract class AbstractSitePage {
 		return true;
 	}
 
+	/**
+	 * set response form data
+	 */
 	final public function setFormData(string $dataName, string $dataValue):AbstractSitePage {
 		$this->responseForm->addChild(
 				(new Node($dataName))->setContent($dataValue)
 		);
 		return $this;
+	}
+
+	/**
+	 * get response form data
+	 */
+	final public function getFormData(string $dataName, $default = null) {
+		$nodeList = $this->responseForm->getChildList($dataName);
+		if (!isset($nodeList[0])) {
+			return $default;
+		}
+		return $nodeList[0]->getContent() ?? $default;
 	}
 
 	final public function getResponse():Tree {
