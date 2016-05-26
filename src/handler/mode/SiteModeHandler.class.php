@@ -81,7 +81,7 @@ class SiteModeHandler extends AbstractModeHandler {
 		$stylesheet->assertIsReadable();
 
 		/* @var $page AbstractSitePage */
-		$page = new $namespace($this->config);
+		$page = new $namespace($this->config, $this->request);
 
 		if (!$page->access()) {
 			$this->outputFailurePage(new StatusEnum(StatusEnum::FORBIDDEN));

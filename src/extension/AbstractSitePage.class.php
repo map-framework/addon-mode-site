@@ -1,6 +1,7 @@
 <?php
 namespace extension;
 
+use data\net\MAPUrl;
 use handler\mode\SiteModeHandler;
 use util\Bucket;
 use xml\Node;
@@ -28,6 +29,11 @@ abstract class AbstractSitePage {
 	 * @var Bucket
 	 */
 	protected $config;
+
+	/**
+	 * @var MAPUrl
+	 */
+	protected $request;
 
 	/**
 	 * @var Tree
