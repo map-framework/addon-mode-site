@@ -74,8 +74,9 @@ abstract class AbstractSitePage {
 	 */
 	abstract public function check():bool;
 
-	public function __construct(Bucket $config) {
+	public function __construct(Bucket $config, MAPUrl $request) {
 		$this->config       = $config;
+		$this->request      = $request;
 		$this->response     = new Tree('document');
 		$this->responseForm = $this->response->getRootNode()->addChild(new Node('form'));
 	}
