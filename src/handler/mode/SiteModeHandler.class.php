@@ -12,6 +12,7 @@ use data\oop\InstanceException;
 use data\peer\http\FormStatusEnum;
 use data\peer\http\StatusEnum;
 use extension\AbstractSitePage;
+use handler\mode\site\RejectException;
 use util\Bucket;
 use util\Logger;
 use util\MAPException;
@@ -114,9 +115,14 @@ class SiteModeHandler extends AbstractModeHandler {
 		}
 		else {
 			if ($this->fillPageObject($page, $_POST)) {
-				if ($page->check()) {
-					$formStatus = new FormStatusEnum(FormStatusEnum::ACCEPTED);
-					$this->closeForm($page->formId);
+				try {
+					if ($page->check()) {
+						$formStatus = new FormStatusEnum(FormStatusEnum::ACCEPTED);
+						$this->closeForm($page->formId);
+					}
+				}
+				catch (RejectException $e) {
+					$page->reject($e->getReason());
 				}
 			}
 			else {
