@@ -122,7 +122,7 @@ class SiteModeHandler extends AbstractModeHandler {
 					}
 				}
 				catch (RejectException $e) {
-					$page->reject($e->getReason());
+					$page->reject($e->getReason(), $e->getReference());
 				}
 			}
 

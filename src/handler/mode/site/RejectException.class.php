@@ -14,13 +14,21 @@ use util\MAPException;
  */
 class RejectException extends MAPException {
 
-	public function __construct(string $reason) {
+	public function __construct(string $reason, string $reference = null) {
 		parent::__construct('The request is rejected.');
 		$this->setData('reason', $reason);
+		$this->setData('reference', $reference);
 	}
 
 	public function getReason():string {
 		return $this->getData('reason');
+	}
+
+	/**
+	 * @return string|null
+	 */
+	public function getReference() {
+		return $this->getData('reference');
 	}
 
 }
