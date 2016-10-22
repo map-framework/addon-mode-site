@@ -125,9 +125,6 @@ class SiteModeHandler extends AbstractModeHandler {
 					$page->reject($e->getReason());
 				}
 			}
-			else {
-				$page->reject('FORM_DATA');
-			}
 
 			if (!isset($formStatus)) {
 				$formStatus = new FormStatusEnum(FormStatusEnum::REJECTED);
@@ -216,33 +213,76 @@ class SiteModeHandler extends AbstractModeHandler {
 
 	/**
 	 * @throws InvalidDataException
+	 * @throws MAPException
 	 */
-	protected function fillPageObject(AbstractSitePage $page, array $dataList):bool {
-		foreach ((new ClassObject(get_class($page)))->getPropertyList() as $property) {
+	protected function fillPageObject(AbstractSitePage $page, array $inputList):bool {
+		$pageClass = (new ClassObject(get_class($page)));
+
+		foreach ($pageClass->getPropertyList() as $property) {
 			if ($property->hasAnnotation('formData')) {
-				$annotation = $property->getAnnotation('formData');
-				$annotation->assertIsBool('optional');
-
-				if ($annotation->hasParam('pattern')) {
-					$annotation->assertIsString('pattern');
+				if (!isset($inputList[$property->getName()])) {
+					if (!$property->hasAnnotation('optional')) {
+						return $page->reject('PARAM_REQUIRED', $property->getName());
+					}
+					continue;
 				}
+				$input = $inputList[$property->getName()];
 
-				$value   = $dataList[$property->getName()] ?? null;
-				$pattern = $annotation->getParam('pattern', '^.+$');
+				if ($property->hasAnnotation('var')) {
+					$varAnnotation = $property->getAnnotation('var');
 
-				if (is_string($value) && AbstractData::isMatching($pattern, $value)) {
-					$property->setValue($page, $value);
-				}
-				elseif ($annotation->getParam('optional') === false) {
-					Logger::debug(
-							'REJECTED because: expected property',
-							array(
-									'page'           => $page,
-									'propertyObject' => $property,
-									'value'          => $value
-							)
-					);
-					return false;
+					switch ($varAnnotation->getParam(0)) {
+						case 'string':
+							if ($property->hasAnnotation('pattern')) {
+								$patternAnnotation = $property->getAnnotation('pattern');
+								if (!AbstractData::isMatching($patternAnnotation->getParam(0), $input)) {
+									return $page->reject('PARAM_PATTERN', $property->getName());
+								}
+							}
+							$property->setValue($page, (string) $input);
+							break;
+						case 'integer':
+						case 'int':
+						case 'float':
+						case 'double':
+							if (!is_numeric($input)) {
+								return $page->reject('PARAM_TYPE', $property->getName());
+							}
+							foreach (['min', 'max'] as $size) {
+								if ($property->hasAnnotation($size)) {
+									$sizeAnnotation = $property->getAnnotation($size);
+									if (!is_numeric($sizeAnnotation->getParam(0))) {
+										throw (new MAPException('invalid annotation parameter'))
+												->setData('property', $property)
+												->setData('annotation', $sizeAnnotation)
+												->setData('paramNumber', 0)
+												->setData('paramValue', $sizeAnnotation->getParam(0))
+												->setData('paramValueExpected', 'numeric');
+									}
+									if (($size === 'min' && $input < $sizeAnnotation->getParam(0))
+											|| ($size === 'max' && $input > $sizeAnnotation->getParam(0))
+									) {
+										return $page->reject('PARAM_SIZE', $property->getName());
+									}
+								}
+							}
+							$property->setValue(
+									$page,
+									(in_array($varAnnotation->getParam(0), ['float', 'double']) ? (float) $input : (int) $input)
+							);
+							break;
+						case 'boolean':
+						case 'bool':
+							$property->setValue($page, (bool) $input);
+							break;
+						default:
+							throw (new MAPException('invalid annotation parameter'))
+									->setData('property', $property)
+									->setData('annotation', $varAnnotation)
+									->setData('paramNumber', 0)
+									->setData('paramValue', $varAnnotation->getParam(0))
+									->setData('paramValueExpected', '"string"|"integer"|"int"|"float"|"double"|"boolean"|"bool"');
+					}
 				}
 			}
 		}

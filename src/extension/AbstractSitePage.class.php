@@ -85,9 +85,12 @@ abstract class AbstractSitePage {
 	 * Use this method in @see AbstractSitePage::check to reject the request.
 	 * Return the response of this method.
 	 */
-	final public function reject(string $reason = null):bool {
+	final public function reject(string $reason = null, string $reference = null):bool {
 		if ($reason !== null) {
 			$this->responseForm->setAttribute('reason', $reason);
+		}
+		if ($reference !== null) {
+			$this->responseForm->setAttribute('reference', $reference);
 		}
 		return false;
 	}
